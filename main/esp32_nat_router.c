@@ -22,6 +22,8 @@
 #include "nvs_flash.h"
 
 #include "freertos/event_groups.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include "esp_wifi.h"
 #include "esp_wpa2.h"
 
@@ -40,7 +42,7 @@
 #include "router_globals.h"
 
 // On board LED
-#define BLINK_GPIO 2
+#define BLINK_GPIO 48
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t wifi_event_group;
@@ -616,35 +618,53 @@ void app_main(void)
 #endif //CONFIG_LOG_COLORS
     }
 
+    int disabledFlag = 0; //1 once the wifi has been disabled once
+    int enableFlag = 0;   //1 once the wifi has been enabled once
+    
     /* Main loop */
     while(true) {
+
+        vTaskDelay(10 / portTICK_RATE_MS);
+
+        //printf("Time: %lld\n", esp_timer_get_time());
+        if(esp_timer_get_time() > 20000000 && !disabledFlag) {
+            printf("\n\n\n\n\n\n\nDisabling WiFi\n\n\n\n\n\n\n\n");
+            esp_wifi_stop();
+            disabledFlag = 1;
+        }
+        if(esp_timer_get_time() > 40000000 && !enableFlag) {
+            printf("\n\n\n\n\n\nEnabling WiFi\n\n\n\n\n\n\n\n");
+            esp_restart();
+            enableFlag = 1;
+        }
+
         /* Get a line using linenoise.
          * The line is returned when ENTER is pressed.
          */
-        char* line = linenoise(prompt);
-        if (line == NULL) { /* Ignore empty lines */
-            continue;
-        }
+        // char* line = linenoise(prompt);
+        // if (line == NULL) { /* Ignore empty lines */
+        //     continue;
+        // }
         /* Add the command to the history */
-        linenoiseHistoryAdd(line);
-#if CONFIG_STORE_HISTORY
-        /* Save command history to filesystem */
-        linenoiseHistorySave(HISTORY_PATH);
-#endif
+//         linenoiseHistoryAdd(line);
+// #if CONFIG_STORE_HISTORY
+//         /* Save command history to filesystem */
+//         linenoiseHistorySave(HISTORY_PATH);
+// #endif
 
         /* Try to run the command */
-        int ret;
-        esp_err_t err = esp_console_run(line, &ret);
-        if (err == ESP_ERR_NOT_FOUND) {
-            printf("Unrecognized command\n");
-        } else if (err == ESP_ERR_INVALID_ARG) {
-            // command was empty
-        } else if (err == ESP_OK && ret != ESP_OK) {
-            printf("Command returned non-zero error code: 0x%x (%s)\n", ret, esp_err_to_name(ret));
-        } else if (err != ESP_OK) {
-            printf("Internal error: %s\n", esp_err_to_name(err));
-        }
+        // int ret;
+        // esp_err_t err = esp_console_run(line, &ret);
+        // if (err == ESP_ERR_NOT_FOUND) {
+        //     printf("Unrecognized command\n");
+        // } else if (err == ESP_ERR_INVALID_ARG) {
+        //     // command was empty
+        // } else if (err == ESP_OK && ret != ESP_OK) {
+        //     printf("Command returned non-zero error code: 0x%x (%s)\n", ret, esp_err_to_name(ret));
+        // } else if (err != ESP_OK) {
+        //     printf("Internal error: %s\n", esp_err_to_name(err));
+        // }
         /* linenoise allocates line buffer on the heap, so need to free it */
-        linenoiseFree(line);
+        // linenoiseFree(line);
     }
 }
